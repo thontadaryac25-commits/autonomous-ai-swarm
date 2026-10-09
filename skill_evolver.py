@@ -5,8 +5,9 @@ import datetime
 from pathlib import Path
 import ollama
 
-MEMORY_FILE = "c:/Users/cool/Desktop/skills/skills_memory.json"
-DAILY_LOG_FILE = "c:/Users/cool/Desktop/skills/daily_skill_log.json"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MEMORY_FILE = os.path.join(BASE_DIR, "skills_memory.json")
+DAILY_LOG_FILE = os.path.join(BASE_DIR, "daily_skill_log.json")
 
 def load_memory() -> dict:
     if os.path.exists(MEMORY_FILE):
@@ -45,7 +46,6 @@ def save_daily_logs(logs: dict):
         json.dump(logs, f, indent=2)
 
 def reflect_and_evolve_skills(task: str, execution_log: str, qa_feedback: str, model: str = "qwen3:4b") -> dict:
-    """Analyzes a completed task and extracts learned improvements for skills."""
     mem = load_memory()
     today_str = datetime.date.today().isoformat()
     now_str = datetime.datetime.now().strftime("%H:%M:%S")
@@ -78,14 +78,17 @@ Return ONLY valid JSON in this exact structure:
 }}
 """
 
+    host = os.environ.get("OLLAMA_HOST", "https://catalogue-president-eyes-fairy.trycloudflare.com")
+    client = ollama.Client(host=host)
+
     try:
-        response = ollama.chat(
+        response = client.chat(
             model=model,
             messages=[{"role": "user", "content": reflection_prompt}],
             format="json"
         )
         data = json.loads(response.message.content)
-    except Exception as e:
+    except Exception:
         data = {
             "improvements": [
                 {
@@ -97,7 +100,6 @@ Return ONLY valid JSON in this exact structure:
             "bug_pattern_prevented": "Standard test-driven bug prevention."
         }
 
-    # Update persistent memory
     mem["total_tasks_completed"] = mem.get("total_tasks_completed", 0) + 1
     improvements = data.get("improvements", [])
 
@@ -109,7 +111,6 @@ Return ONLY valid JSON in this exact structure:
                 "summary": imp.get("summary"),
                 "rule": imp.get("learned_rule")
             })
-            # Increase skill level slightly as learnings accumulate
             learning_count = len(mem["skills"][skill_name]["learnings"])
             mem["skills"][skill_name]["level"] = 1 + (learning_count // 2)
 
@@ -122,7 +123,6 @@ Return ONLY valid JSON in this exact structure:
 
     save_memory(mem)
 
-    # Update Daily Log
     daily_logs = load_daily_logs()
     if today_str not in daily_logs:
         daily_logs[today_str] = []
@@ -139,14 +139,13 @@ Return ONLY valid JSON in this exact structure:
     return log_entry
 
 def get_today_summary() -> str:
-    """Returns a formatted summary of all skill improvements achieved today."""
     today_str = datetime.date.today().isoformat()
     daily_logs = load_daily_logs()
     mem = load_memory()
 
     today_entries = daily_logs.get(today_str, [])
     if not today_entries:
-        return f"📅 Daily Skill Update ({today_str}):\nNo new tasks logged yet today. Memory contains {mem.get('total_tasks_completed', 0)} total mastered tasks."
+        return f"📅 Daily Skill Update ({today_str}):\nMemory contains {mem.get('total_tasks_completed', 0)} total mastered tasks."
 
     lines = [f"📅 Daily Skill Evolution Report ({today_str})", "=" * 55]
     for i, entry in enumerate(today_entries, 1):

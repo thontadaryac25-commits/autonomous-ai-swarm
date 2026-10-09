@@ -18,9 +18,13 @@ if sys.platform == "win32":
 
 import skill_evolver
 import multi_agent_team
+import daily_intelligence
 
-PORT = 8080
-WORKSPACE_DIR = "C:/Users/cool/Desktop/Portfolio"
+# Dynamic PORT for Render / Cloud compatibility
+PORT = int(os.environ.get("PORT", 8080))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE_DIR = os.path.join(BASE_DIR, "project_output")
+os.makedirs(WORKSPACE_DIR, exist_ok=True)
 
 # Global state for GUI
 ACTIVE_TASK = {
@@ -49,55 +53,39 @@ def run_task_background(prompt: str):
     ACTIVE_TASK["logs"] = []
     ACTIVE_TASK["final_result"] = None
 
-    append_log("System", "INFO", f"Cloud GPU Swarm running task: '{prompt}'")
+    append_log("System", "INFO", f"Cloud Swarm running task: '{prompt}'")
 
     try:
-        swarm = multi_agent_team.MultiAgentSwarm(
-            coder_model="qwen3:4b",
-            frontend_model="gemma3:4b-it-q4_K_M",
-            tester_model="llama3.2:latest"
-        )
+        swarm = multi_agent_team.MultiAgentSwarm()
+        shared_context = f"User Request: {prompt}\nWorkspace: {WORKSPACE_DIR}\n"
 
-        shared_context = f"User Request: {prompt}\nUser Desktop Path: C:\\Users\\cool\\Desktop\n"
-
-        # Step 1: Qwen 3 (Backend & Folder Creation)
-        ACTIVE_TASK["current_agent"] = "Agent 1: Backend Lead (Qwen 3 on Cloud GPU)"
-        append_log("Agent 1 (Qwen 3)", "THINKING", "Creating folder C:\\Users\\cool\\Desktop\\Portfolio and index.html...")
+        # Step 1: Qwen 3 (Backend & Architecture)
+        ACTIVE_TASK["current_agent"] = "Agent 1: Backend Lead (Qwen 3)"
+        append_log("Agent 1 (Qwen 3)", "THINKING", "Analyzing requirements, checking DB memory, and writing core files...")
         
-        coder_task = (
-            f"User request: '{prompt}'.\n"
-            "1. Determine the target folder on the system (e.g. C:\\Users\\cool\\Desktop\\Portfolio) and call create_directory.\n"
-            "2. Create the index.html file with complete structure and content using write_file in that folder."
-        )
+        coder_task = f"User request: '{prompt}'. Create necessary directory and write core files."
         coder_out = swarm.coder_agent.step(coder_task, shared_context)
         append_log("Agent 1 (Qwen 3)", "OUTPUT", coder_out)
         shared_context += f"\nBackend output:\n{coder_out}\n"
 
-        # Step 2: Gemma 3 (Frontend & Styling)
-        ACTIVE_TASK["current_agent"] = "Agent 2: Frontend Lead (Gemma 3 on Cloud GPU)"
-        append_log("Agent 2 (Gemma 3)", "THINKING", "Creating responsive style.css and interactive script.js...")
+        # Step 2: Gemma 3 (Frontend & UI/UX)
+        ACTIVE_TASK["current_agent"] = "Agent 2: Frontend Lead (Gemma 3)"
+        append_log("Agent 2 (Gemma 3)", "THINKING", "Creating modern styling and interactive scripts...")
         
-        frontend_task = (
-            f"User request: '{prompt}'.\n"
-            f"Backend summary: {coder_out}\n"
-            "Create modern responsive style.css and script.js in the target project folder using write_file."
-        )
+        frontend_task = f"User request: '{prompt}'. Backend summary: {coder_out}. Create modern styles and UI."
         frontend_out = swarm.frontend_agent.step(frontend_task, shared_context)
         append_log("Agent 2 (Gemma 3)", "OUTPUT", frontend_out)
         shared_context += f"\nFrontend output:\n{frontend_out}\n"
 
         # Step 3: Llama 3.2 (QA Validation)
-        ACTIVE_TASK["current_agent"] = "Agent 3: QA & Testing (Llama 3.2 on Cloud GPU)"
-        append_log("Agent 3 (Llama 3.2)", "THINKING", "Validating folder contents and running QA checks...")
+        ACTIVE_TASK["current_agent"] = "Agent 3: QA & Testing (Llama 3.2)"
+        append_log("Agent 3 (Llama 3.2)", "THINKING", "Validating project files and running QA verification...")
         
-        qa_task = (
-            f"Verify the project created for: '{prompt}'.\n"
-            "Use list_files to confirm all files are created in the project folder and provide a final QA summary."
-        )
+        qa_task = f"Verify the project created for: '{prompt}'. Provide final QA summary."
         qa_out = swarm.qa_agent.step(qa_task, shared_context)
         append_log("Agent 3 (Llama 3.2)", "REPORT", qa_out)
 
-        append_log("System", "SUCCESS", "All 3 agents completed the task successfully on your machine!")
+        append_log("System", "SUCCESS", "All 3 agents completed the task successfully!")
         ACTIVE_TASK["status"] = "COMPLETED"
         ACTIVE_TASK["final_result"] = {
             "status": "SUCCESS",
@@ -127,7 +115,7 @@ HTML_PAGE = """<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>⚡ Cloud GPU Agent Cockpit & Skill Evolution GUI</title>
+  <title>⚡ Cloud Agent Cockpit & Skill Evolution GUI</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -183,13 +171,13 @@ HTML_PAGE = """<!DOCTYPE html>
     .bar-bg { background: #21262d; height: 8px; border-radius: 4px; overflow: hidden; }
     .bar-fill { background: linear-gradient(90deg, var(--accent), var(--purple)); height: 100%; border-radius: 4px; width: 20%; transition: width 0.4s; }
 
-    .daily-box { background: #090d13; border: 1px solid var(--border); border-radius: 6px; padding: 12px; max-height: 250px; overflow-y: auto; font-size: 0.85rem; }
+    .daily-box { background: #090d13; border: 1px solid var(--border); border-radius: 6px; padding: 12px; max-height: 500px; height: 500px; overflow-y: auto; font-size: 0.85rem; }
   </style>
 </head>
 <body>
 
 <header>
-  <h1>⚡ Cloud GPU Agent Cockpit & Skill Evolver <span class="badge">CLOUD GPU CONNECTED</span></h1>
+  <h1>⚡ Cloud Agent Cockpit & Skill Evolver <span class="badge">CLOUD ONLINE</span></h1>
   <div>Status: <strong id="global-status" style="color:var(--green)">READY</strong></div>
 </header>
 
@@ -199,33 +187,33 @@ HTML_PAGE = """<!DOCTYPE html>
     <!-- Task Launcher -->
     <div class="card">
       <h2>🚀 Launch Swarm Prompt</h2>
-      <textarea id="task-input">create a new folder in the desktop folder and name it as "Portfolio" and please build My Portfolio website</textarea>
-      <button id="run-btn" onclick="startTask()">Start 3-Agent Swarm (Cloud GPU)</button>
+      <textarea id="task-input" placeholder="Type what you want the AI swarm to build or learn..."></textarea>
+      <button id="run-btn" onclick="startTask()">Start 3-Agent Swarm</button>
     </div>
 
     <!-- Active Local Models -->
     <div class="card">
-      <h2>🤖 Active Cloud GPU Team</h2>
+      <h2>🤖 Active Agent Swarm</h2>
       <div class="model-pill">
         <div>
           <div class="name">qwen3:4b (Rank #1)</div>
-          <div class="role">Backend, Core & Folder Architect</div>
+          <div class="role">Backend, Core & Security Architect</div>
         </div>
-        <span style="color:var(--green)">● GPU Online</span>
+        <span style="color:var(--green)">● Online</span>
       </div>
       <div class="model-pill">
         <div>
           <div class="name">gemma3:4b-it (Rank #2)</div>
-          <div class="role">Frontend & UI/UX Specialist</div>
+          <div class="role">Frontend UI/UX & 3D Specialist</div>
         </div>
-        <span style="color:var(--green)">● GPU Online</span>
+        <span style="color:var(--green)">● Online</span>
       </div>
       <div class="model-pill">
         <div>
           <div class="name">llama3.2:latest (Rank #3)</div>
           <div class="role">QA, Validation & Test Runner</div>
         </div>
-        <span style="color:var(--green)">● GPU Online</span>
+        <span style="color:var(--green)">● Online</span>
       </div>
     </div>
 
@@ -236,32 +224,40 @@ HTML_PAGE = """<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Right Column: Tabs (Live Thinkings & Logs / Daily Improvements / Output) -->
+  <!-- Right Column: Tabs (Live Thinkings / Daily News & Intelligence / Output) -->
   <div>
     <div class="card" style="height: 100%;">
       <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('logs', event)">🧠 Agent Thinkings & Live Logs</button>
-        <button class="tab-btn" onclick="switchTab('daily', event)">📅 Daily Skill Improvements</button>
+        <button class="tab-btn active" onclick="switchTab('logs', event)">🧠 Agent Thinkings & Logs</button>
+        <button class="tab-btn" onclick="switchTab('news', event)">🌍 Live USA & India News</button>
+        <button class="tab-btn" onclick="switchTab('daily', event)">📅 Daily Skill Evolution</button>
         <button class="tab-btn" onclick="switchTab('files', event)">📁 Workspace Files</button>
       </div>
 
       <!-- Tab 1: Live Thinkings & Logs -->
       <div id="tab-logs">
         <div class="log-container" id="log-box">
-          <div style="color: #8b949e; text-align: center; margin-top: 180px;">Connected to Cloud GPU! Click 'Start 3-Agent Swarm' to begin.</div>
+          <div style="color: #8b949e; text-align: center; margin-top: 180px;">Ready! Enter a prompt on the left to start.</div>
         </div>
       </div>
 
-      <!-- Tab 2: Daily Skill Improvements -->
+      <!-- Tab 2: Live News -->
+      <div id="tab-news" style="display:none;">
+        <div class="daily-box" id="news-content">
+          Loading live USA & India news briefings...
+        </div>
+      </div>
+
+      <!-- Tab 3: Daily Skill Improvements -->
       <div id="tab-daily" style="display:none;">
-        <div class="daily-box" style="height: 500px; max-height: 500px;" id="daily-content">
+        <div class="daily-box" id="daily-content">
           Loading daily evolution report...
         </div>
       </div>
 
-      <!-- Tab 3: Generated Files -->
+      <!-- Tab 4: Generated Files -->
       <div id="tab-files" style="display:none;">
-        <div class="daily-box" style="height: 500px; max-height: 500px;" id="files-content">
+        <div class="daily-box" id="files-content">
           Loading project files...
         </div>
       </div>
@@ -277,8 +273,10 @@ HTML_PAGE = """<!DOCTYPE html>
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     if (evt && evt.target) evt.target.classList.add('active');
     document.getElementById('tab-logs').style.display = tab === 'logs' ? 'block' : 'none';
+    document.getElementById('tab-news').style.display = tab === 'news' ? 'block' : 'none';
     document.getElementById('tab-daily').style.display = tab === 'daily' ? 'block' : 'none';
     document.getElementById('tab-files').style.display = tab === 'files' ? 'block' : 'none';
+    if (tab === 'news') fetchNews();
     if (tab === 'daily') fetchDaily();
     if (tab === 'files') fetchFiles();
   }
@@ -288,8 +286,8 @@ HTML_PAGE = """<!DOCTYPE html>
     if (!goal) return alert("Please enter a prompt!");
     
     document.getElementById('run-btn').disabled = true;
-    document.getElementById('run-btn').innerText = "Swarm is Working (GPU)...";
-    document.getElementById('global-status').innerText = "RUNNING (CLOUD GPU)";
+    document.getElementById('run-btn').innerText = "Swarm is Working...";
+    document.getElementById('global-status').innerText = "RUNNING";
     document.getElementById('global-status').style.color = "var(--yellow)";
 
     await fetch('/api/start', {
@@ -310,15 +308,15 @@ HTML_PAGE = """<!DOCTYPE html>
       if (data.status === 'RUNNING') {
         statusEl.style.color = 'var(--yellow)';
         document.getElementById('run-btn').disabled = true;
-        document.getElementById('run-btn').innerText = "Swarm is Working (GPU)...";
+        document.getElementById('run-btn').innerText = "Swarm is Working...";
       } else if (data.status === 'COMPLETED') {
         statusEl.style.color = 'var(--green)';
         document.getElementById('run-btn').disabled = false;
-        document.getElementById('run-btn').innerText = "Start 3-Agent Swarm (Cloud GPU)";
+        document.getElementById('run-btn').innerText = "Start 3-Agent Swarm";
       } else {
         statusEl.style.color = 'var(--accent)';
         document.getElementById('run-btn').disabled = false;
-        document.getElementById('run-btn').innerText = "Start 3-Agent Swarm (Cloud GPU)";
+        document.getElementById('run-btn').innerText = "Start 3-Agent Swarm";
       }
 
       // Render Logs
@@ -340,9 +338,7 @@ HTML_PAGE = """<!DOCTYPE html>
       if (data.skills) {
         renderSkills(data.skills);
       }
-    } catch (e) {
-      // Ignore transient fetch errors
-    }
+    } catch (e) {}
   }
 
   function renderSkills(skillsData) {
@@ -363,6 +359,14 @@ HTML_PAGE = """<!DOCTYPE html>
       `;
     }
     container.innerHTML = html;
+  }
+
+  async function fetchNews() {
+    try {
+      const res = await fetch('/api/news');
+      const data = await res.json();
+      document.getElementById('news-content').innerHTML = `<pre style="white-space:pre-wrap; font-family:monospace;">${escapeHtml(data.news)}</pre>`;
+    } catch(e) {}
   }
 
   async function fetchDaily() {
@@ -433,6 +437,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.send_header("Content-Length", str(len(body)))
                 self.end_headers()
                 self.safe_write(body)
+            elif parsed.path == "/api/news":
+                news_text = daily_intelligence.get_usa_news_summary() + "\n\n" + daily_intelligence.get_india_news_summary()
+                body = json.dumps({"news": news_text}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                self.safe_write(body)
             elif parsed.path == "/api/daily":
                 summary = skill_evolver.get_today_summary()
                 body = json.dumps({"summary": summary}).encode("utf-8")
@@ -443,10 +455,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self.safe_write(body)
             elif parsed.path == "/api/files":
                 files = []
-                check_dir = "C:/Users/cool/Desktop/Portfolio"
-                if os.path.exists(check_dir):
-                    for item in os.listdir(check_dir):
-                        p = os.path.join(check_dir, item)
+                if os.path.exists(WORKSPACE_DIR):
+                    for item in os.listdir(WORKSPACE_DIR):
+                        p = os.path.join(WORKSPACE_DIR, item)
                         size = f"{os.path.getsize(p)} bytes" if os.path.isfile(p) else "Folder"
                         files.append({"name": item, "size": size})
                 body = json.dumps({"files": files}).encode("utf-8")
@@ -491,13 +502,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
 def run_server():
     server = ThreadingHTTPServer(("0.0.0.0", PORT), DashboardHandler)
     print("=" * 70)
-    print(f"🚀 CLOUD GPU AGENT COCKPIT & GUI RUNNING AT:")
+    print(f"🚀 AGENT COCKPIT RUNNING AT PORT {PORT}")
     print(f"👉 http://localhost:{PORT}")
     print("=" * 70)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nStopping Dashboard server...")
+        print("\nStopping server...")
 
 if __name__ == "__main__":
     run_server()

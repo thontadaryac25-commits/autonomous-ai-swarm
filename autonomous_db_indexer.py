@@ -3,22 +3,13 @@ import sys
 import sqlite3
 import json
 import time
-import math
 import re
 from pathlib import Path
 from typing import List, Dict, Any
 
-# Ensure UTF-8 output on Windows
-if sys.platform == "win32":
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
-
-import requests
-
-DB_PATH = "c:/Users/cool/Desktop/skills/agent_memory.db"
+# Cross-platform base directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "agent_memory.db")
 
 class AutonomousDatabaseIndexer:
     def __init__(self, db_path: str = DB_PATH):
@@ -27,6 +18,7 @@ class AutonomousDatabaseIndexer:
 
     def _init_db(self):
         """Initializes SQLite database with FTS5 Full-Text Indexing and Vector Storage."""
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
@@ -93,7 +85,6 @@ class AutonomousDatabaseIndexer:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        # Clean search query for FTS5 syntax
         clean_terms = re.findall(r'\w+', query)
         if not clean_terms:
             conn.close()
@@ -125,12 +116,13 @@ class AutonomousDatabaseIndexer:
                 })
             conn.close()
             return results
-        except Exception as e:
+        except Exception:
             conn.close()
             return []
 
-    def auto_index_all_playbooks(self, playbooks_dir: str = "c:/Users/cool/Desktop/skills/learned_playbooks") -> int:
-        """Automatically scans and indexes all generated Python playbooks and learned code."""
+    def auto_index_all_playbooks(self, playbooks_dir: str = None) -> int:
+        if playbooks_dir is None:
+            playbooks_dir = os.path.join(BASE_DIR, "learned_playbooks")
         if not os.path.exists(playbooks_dir):
             return 0
         
@@ -142,7 +134,6 @@ class AutonomousDatabaseIndexer:
                     with open(file_path, "r", encoding="utf-8") as f:
                         code = f.read()
                     
-                    # Extract header metadata
                     title = file.replace("_", " ").replace(".py", "").title()
                     category = "web_automation"
                     if "health" in file.lower() or "3d" in file.lower():
@@ -164,7 +155,6 @@ class AutonomousDatabaseIndexer:
         return count
 
     def get_stats(self) -> Dict[str, Any]:
-        """Returns total indexed items and category breakdowns."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT COUNT(*) FROM knowledge_items")
@@ -179,27 +169,4 @@ class AutonomousDatabaseIndexer:
 db_indexer = AutonomousDatabaseIndexer()
 
 if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="Autonomous Fast Database Indexer")
-    parser.add_argument("--auto-index", action="store_true", help="Index all playbooks into DB")
-    parser.add_argument("--search", type=str, help="Search memory DB")
-    parser.add_argument("--stats", action="store_true", help="Show DB statistics")
-
-    args = parser.parse_args()
-
-    if args.auto_index:
-        added = db_indexer.auto_index_all_playbooks()
-        print(f"✅ Successfully indexed {added} playbooks into High-Speed Database!")
-        print("Database Stats:", db_indexer.get_stats())
-    elif args.search:
-        start_time = time.time()
-        results = db_indexer.fast_search(args.search)
-        elapsed_ms = (time.time() - start_time) * 1000
-        print(f"🔍 Search results for '{args.search}' (Retrieved in {elapsed_ms:.2f} ms):")
-        print("=" * 65)
-        for r in results:
-            print(f"\n📌 [{r['category'].upper()}] {r['title']}")
-            if r['code_snippet']:
-                print(f"   💻 Code Preview: {r['code_snippet'][:120]}...")
-    else:
-        print("Database Stats:", db_indexer.get_stats())
+    print("Database Stats:", db_indexer.get_stats())
